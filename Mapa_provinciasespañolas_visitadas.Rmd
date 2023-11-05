@@ -1,0 +1,76 @@
+---
+title: "Provincias españolas visitadas"
+output: html_document
+author: "Lucía Gallo"
+date: "2023"
+---
+
+Este rmarkdown permite mapear las provincias españolas que hayan visitado. Para una versión interactiva, puedes consultar la Shiny App en el repositorio.
+
+```{r librerías, message=FALSE}
+library(tmap)
+library(ggplot2)
+library(sf)
+library(mapSpain)
+library(leaflet)
+library(shiny)
+library(leaflet.extras)
+```
+
+
+
+Leemos las base de datos haciendo uso de la librería mapSpain() y analizamos los nombres de las provincias.
+
+```{r}
+provs <- esp_get_prov_siane(epsg = 3857)
+head(unique(provs$iso2.prov.name.es))
+```
+
+Ploteamos el mapa completo de España para verificar que funcione:
+```{r}
+ggplot(provs) +
+  geom_sf(aes(fill = iso2.prov.name.es), color = "white", show.legend = FALSE)
+```
+  
+Indicamos manualmente los nombres de las provincias visitadas. Se creará una columna donde indique "highlighted" si la hemos visitado o "normal" si no hemos estado allí.
+```{r}
+provs$highlighted <- ifelse(provs$iso2.prov.name.es %in% c("Cádiz", "Granada", "Málaga", "Barcelona", "Madrid", "Toledo", "Sevilla", "Zaragoza","Tarragona", "Gerona"), "highlighted", "normal")
+```
+
+Ya podemos plotear:
+```{r}
+ggplot(provs) +
+  geom_sf(aes(fill = highlighted), color = "white", show.legend = FALSE) +
+    scale_fill_manual(values = c("darkgoldenrod1", "brown1")) + 
+  theme_minimal() +
+  coord_sf(datum = NA) +
+  labs(title="Provincias españolas visitadas (en amarillo)",
+       caption = "Fuente: elaboración propia con librería mapSpain")
+```
+
+
+Ahora, vamos a hacer el mapa con leaflet(). Primero, transformamos nuestro dataset a una proyección compatible. Además, seteamos las coordenadas del país.
+
+```{r}
+provs2 <- st_transform(provs, crs = st_crs(4326))
+espana_coords <- c(40, -4)  
+```
+
+```{r}
+leaflet(data = provs2) %>%
+  setView(lng = espana_coords[2], lat = espana_coords[1], zoom = 6) %>%
+  addTiles() %>%  
+  addPolygons(color = "black", 
+              fillColor = ~ifelse(highlighted == "highlighted", "lightgreen", "lightpink"), 
+              fillOpacity = 0.4, 
+              weight = 1) %>%
+  setView(lng = -4, lat = 40, zoom = 5)
+```
+
+
+Para tener una versión interactiva, visitar la versión en Shiny que se encuentra en este repo.
+
+
+
+
+
